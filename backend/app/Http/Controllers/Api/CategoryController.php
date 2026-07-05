@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoryRequest;
+use App\Policies\CategoryPolicy;
 use App\Models\Category;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 
 class CategoryController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index(Request $request)
     {
         $categories = Category::where('user_id', $request->user()->id)
@@ -42,13 +46,8 @@ class CategoryController extends Controller
 
     public function update(CategoryRequest $request, Category $category)
     {
-        if ($category->user_id !== $request->user()->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized.'
-            ], 403);
-        }
-
+        $this->authorize('update', $category);
+        
         $category->update([
             'name' => $request->name,
             'type' => $request->type,
@@ -65,12 +64,7 @@ class CategoryController extends Controller
 
     public function destroy(Request $request, Category $category)
     {
-        if ($category->user_id !== $request->user()->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized.'
-            ], 403);
-        }
+        $this->authorize('delete', $category);
 
         $category->delete();
 
