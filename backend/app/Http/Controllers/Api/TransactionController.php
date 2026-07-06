@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
+use App\Http\Resources\TransactionResource;
 use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -22,7 +23,8 @@ class TransactionController extends Controller
 
         return response()->json([
             'success' => true,
-            'transactions' => $transactions,
+            'transactions' => TransactionResource::collection($transactions),
+            // 'transactions' => $transactions,
         ]);
     }
 
@@ -52,7 +54,7 @@ class TransactionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Transaction created successfully.',
-            'transaction' => $transaction,
+            'transaction' => new TransactionResource($transaction->load('category')),
         ], 201);
     }
 
@@ -83,7 +85,7 @@ class TransactionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Transaction updated successfully.',
-            'transaction' => $transaction->load('category'),
+            'transaction' => new TransactionResource($transaction->load('category')),
         ]);
     }
 
