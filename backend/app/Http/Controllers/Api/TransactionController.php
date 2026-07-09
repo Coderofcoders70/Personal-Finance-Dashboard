@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
 use App\Http\Resources\TransactionResource;
+use App\Services\NotificationService;
 use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -13,6 +14,13 @@ use Illuminate\Http\Request;
 class TransactionController extends Controller
 {
     use AuthorizesRequests;
+
+    private NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
 
     public function index(Request $request)
     {
@@ -51,6 +59,22 @@ class TransactionController extends Controller
             'transaction_date' => $request->transaction_date,
         ]);
 
+        $action = $transaction->type === 'income'
+            ? 'Income Added'
+            : 'Expense Added';
+
+        $event = $transaction->type === 'income'
+            ? 'income_created'
+            : 'expense_created';
+
+        $this->notificationService->create(
+            $request->user(),
+            $event,
+            $action,
+            "{$transaction->title} of ₹{$transaction->amount} added successfully.",
+            'success'
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Transaction created successfully.',
@@ -82,6 +106,22 @@ class TransactionController extends Controller
             'transaction_date' => $request->transaction_date,
         ]);
 
+        $action = $transaction->type === 'income'
+            ? 'Income Updated'
+            : 'Expense Updated';
+
+        $event = $transaction->type === 'income'
+            ? 'income_updated'
+            : 'expense_updated';
+
+        $this->notificationService->create(
+            $request->user(),
+            $event,
+            $action,
+            "{$transaction->title} updated successfully.",
+            'info'
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Transaction updated successfully.',
@@ -93,7 +133,27 @@ class TransactionController extends Controller
     {
         $this->authorize('delete', $transaction);
 
+        $title = $transaction->title;
+        $type = $transaction->type;
+        $amount = $transaction->amount;
+
         $transaction->delete();
+
+        $action = $type === 'income'
+            ? 'Income Deleted'
+            : 'Expense Deleted';
+
+        $event = $type === 'income'
+            ? 'income_deleted'
+            : 'expense_deleted';
+
+        $this->notificationService->create(
+            $request->user(),
+            $event,
+            $action,
+            "{$title} of ₹{$amount} deleted successfully.",
+            'warning'
+        );
 
         return response()->json([
             'success' => true,

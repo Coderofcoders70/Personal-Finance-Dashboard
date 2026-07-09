@@ -10,9 +10,17 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\RegisterRequest;
+use App\Services\NotificationService;
 
 class AuthController extends Controller
 {
+    private NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     public function register(RegisterRequest $request)
     {
         $user = User::create([
@@ -20,6 +28,14 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        $this->notificationService->create(
+            $user,
+            'user_registered',
+            "Welcome, {$user->name}!",
+            'Welcome to Personal Finance Dashboard. Your account has been created successfully. We are excited to help you build better financial habits.',
+            'success'
+        );
 
         Profile::create([
             'user_id' => $user->id,
@@ -49,7 +65,7 @@ class AuthController extends Controller
                 'message' => 'Invalid credentials.',
             ], 401);
         }
-        
+
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
