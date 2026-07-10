@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Services\NotificationService;
-use App\Policies\CategoryPolicy;
 use App\Models\Category;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 
 class CategoryController extends Controller
@@ -37,22 +37,27 @@ class CategoryController extends Controller
 
     public function store(CategoryRequest $request)
     {
-        $category = Category::create([
-            'user_id' => $request->user()->id,
-            'name' => $request->name,
-            'type' => $request->type,
-            'icon' => $request->icon,
-            'color' => $request->color,
-            'is_system' => false,
-        ]);
+        $category = DB::transaction(function () use ($request) {
 
-        $this->notificationService->create(
-            $request->user(),
-            'category_created',
-            'Category Created',
-            "{$category->name} category created successfully.",
-            'success'
-        );
+            $category = Category::create([
+                'user_id' => $request->user()->id,
+                'name' => $request->name,
+                'type' => $request->type,
+                'icon' => $request->icon,
+                'color' => $request->color,
+                'is_system' => false,
+            ]);
+
+            $this->notificationService->create(
+                $request->user(),
+                'category_created',
+                'Category Created',
+                "{$category->name} category created successfully.",
+                'success'
+            );
+
+            return $category;
+        });
 
         return response()->json([
             'success' => true,
@@ -65,20 +70,23 @@ class CategoryController extends Controller
     {
         $this->authorize('update', $category);
 
-        $category->update([
-            'name' => $request->name,
-            'type' => $request->type,
-            'icon' => $request->icon,
-            'color' => $request->color,
-        ]);
+        DB::transaction(function () use ($request, $category) {
 
-        $this->notificationService->create(
-            $request->user(),
-            'category_updated',
-            'Category Updated',
-            "{$category->name} category updated successfully.",
-            'info'
-        );
+            $category->update([
+                'name' => $request->name,
+                'type' => $request->type,
+                'icon' => $request->icon,
+                'color' => $request->color,
+            ]);
+
+            $this->notificationService->create(
+                $request->user(),
+                'category_updated',
+                'Category Updated',
+                "{$category->name} category updated successfully.",
+                'info'
+            );
+        });
 
         return response()->json([
             'success' => true,
@@ -92,14 +100,19 @@ class CategoryController extends Controller
         $this->authorize('delete', $category);
 
         $categoryName = $category->name;
-        $category->delete();
-        $this->notificationService->create(
-            $request->user(),
-            'category_deleted',
-            'Category Deleted',
-            "{$categoryName} category deleted successfully.",
-            'warning'
-        );
+        
+        DB::transaction(function () use ($request, $category, $categoryName) {
+            
+            $category->delete();
+
+            $this->notificationService->create(
+                $request->user(),
+                'category_deleted',
+                'Category Deleted',
+                "{$categoryName} category deleted successfully.",
+                'warning'
+            );
+        });
 
         return response()->json([
             'success' => true,

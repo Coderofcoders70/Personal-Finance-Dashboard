@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\RegisterRequest;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -23,27 +24,47 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request)
     {
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        DB::beginTransaction();
 
-        $this->notificationService->create(
-            $user,
-            'user_registered',
-            "Welcome, {$user->name}!",
-            'Welcome to Personal Finance Dashboard. Your account has been created successfully. We are excited to help you build better financial habits.',
-            'success'
-        );
+        try {
 
-        Profile::create([
-            'user_id' => $user->id,
-        ]);
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
 
-        Setting::create([
-            'user_id' => $user->id,
-        ]);
+            Profile::create([
+                'user_id' => $user->id,
+            ]);
+
+            Setting::create([
+                'user_id' => $user->id,
+            ]);
+
+            // throw new \Exception('Testing rollback');
+
+            $this->notificationService->create(
+                $user,
+                'user_registered',
+                "Welcome, {$user->name}!",
+                'Welcome to Personal Finance Dashboard. Your account has been created successfully. We are excited to help you build better financial habits.',
+                'success'
+            );
+
+            DB::commit();
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+
+                'success' => false,
+                'message' => 'Registration failed. Please try again.',
+                // Uncomment the below while debugging:
+                // 'error' => $e->getMessage()
+            ], 500);
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

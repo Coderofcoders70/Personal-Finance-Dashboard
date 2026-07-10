@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
 
 class TransactionController extends Controller
 {
@@ -49,31 +51,35 @@ class TransactionController extends Controller
             ], 404);
         }
 
-        $transaction = Transaction::create([
-            'user_id' => $request->user()->id,
-            'category_id' => $request->category_id,
-            'type' => $request->type,
-            'title' => $request->title,
-            'description' => $request->description,
-            'amount' => $request->amount,
-            'transaction_date' => $request->transaction_date,
-        ]);
+        $transaction = DB::transaction(function () use ($request) {
+            $transaction = Transaction::create([
+                'user_id' => $request->user()->id,
+                'category_id' => $request->category_id,
+                'type' => $request->type,
+                'title' => $request->title,
+                'description' => $request->description,
+                'amount' => $request->amount,
+                'transaction_date' => $request->transaction_date,
+            ]);
 
-        $action = $transaction->type === 'income'
-            ? 'Income Added'
-            : 'Expense Added';
+            $action = $transaction->type === 'income'
+                ? 'Income Added'
+                : 'Expense Added';
 
-        $event = $transaction->type === 'income'
-            ? 'income_created'
-            : 'expense_created';
+            $event = $transaction->type === 'income'
+                ? 'income_created'
+                : 'expense_created';
 
-        $this->notificationService->create(
-            $request->user(),
-            $event,
-            $action,
-            "{$transaction->title} of ₹{$transaction->amount} added successfully.",
-            'success'
-        );
+            $this->notificationService->create(
+                $request->user(),
+                $event,
+                $action,
+                "{$transaction->title} of ₹{$transaction->amount} added successfully.",
+                'success'
+            );
+
+            return $transaction;
+        });
 
         return response()->json([
             'success' => true,
@@ -97,30 +103,32 @@ class TransactionController extends Controller
             ], 404);
         }
 
-        $transaction->update([
-            'category_id' => $request->category_id,
-            'type' => $request->type,
-            'title' => $request->title,
-            'description' => $request->description,
-            'amount' => $request->amount,
-            'transaction_date' => $request->transaction_date,
-        ]);
+        DB::transaction(function () use ($request, $transaction) {
+            $transaction->update([
+                'category_id' => $request->category_id,
+                'type' => $request->type,
+                'title' => $request->title,
+                'description' => $request->description,
+                'amount' => $request->amount,
+                'transaction_date' => $request->transaction_date,
+            ]);
 
-        $action = $transaction->type === 'income'
-            ? 'Income Updated'
-            : 'Expense Updated';
+            $action = $transaction->type === 'income'
+                ? 'Income Updated'
+                : 'Expense Updated';
 
-        $event = $transaction->type === 'income'
-            ? 'income_updated'
-            : 'expense_updated';
+            $event = $transaction->type === 'income'
+                ? 'income_updated'
+                : 'expense_updated';
 
-        $this->notificationService->create(
-            $request->user(),
-            $event,
-            $action,
-            "{$transaction->title} updated successfully.",
-            'info'
-        );
+            $this->notificationService->create(
+                $request->user(),
+                $event,
+                $action,
+                "{$transaction->title} updated successfully.",
+                'info'
+            );
+        });
 
         return response()->json([
             'success' => true,
@@ -137,23 +145,26 @@ class TransactionController extends Controller
         $type = $transaction->type;
         $amount = $transaction->amount;
 
-        $transaction->delete();
+        DB::transaction(function () use ($request, $transaction, $title, $type, $amount) {
+            
+            $transaction->delete();
 
-        $action = $type === 'income'
-            ? 'Income Deleted'
-            : 'Expense Deleted';
+            $action = $type === 'income'
+                ? 'Income Deleted'
+                : 'Expense Deleted';
 
-        $event = $type === 'income'
-            ? 'income_deleted'
-            : 'expense_deleted';
+            $event = $type === 'income'
+                ? 'income_deleted'
+                : 'expense_deleted';
 
-        $this->notificationService->create(
-            $request->user(),
-            $event,
-            $action,
-            "{$title} of ₹{$amount} deleted successfully.",
-            'warning'
-        );
+            $this->notificationService->create(
+                $request->user(),
+                $event,
+                $action,
+                "{$title} of ₹{$amount} deleted successfully.",
+                'warning'
+            );
+        });
 
         return response()->json([
             'success' => true,
