@@ -218,4 +218,22 @@ class FinanceService
                 ];
             });
     }
+
+    public function aiContext(User $user): array
+    {
+        return [
+            
+            'summary' => $this->calculateSummary($user),
+
+            'monthly' => $this->calculateMonthlySummary($user),
+
+            'recent_transactions' => TransactionResource::collection(
+                $this->recentTransactions($user)
+            ),
+
+            'expense_by_category' => $this->expenseByCategory($user),
+
+            'income_by_category' => $this->incomeByCategory($user),
+        ];
+    }
 }

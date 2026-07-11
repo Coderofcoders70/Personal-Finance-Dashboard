@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\AIChatController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -53,3 +54,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
 });
+
+// AI api
+Route::middleware('auth:sanctum')->post('/ai/chat', [AIChatController::class, 'chat']);
