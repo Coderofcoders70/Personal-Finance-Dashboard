@@ -17,21 +17,60 @@ class AIChatService
 
     public function generateResponse(User $user, string $message): string
     {
-        $context = $this->financeService->aiContext($user);
+        $financialContext = $this->buildFinancialContext($user);
+
+        $insights = $this->detectInsights($financialContext);
 
         $prompt = $this->buildPrompt(
-            $context,
+            $financialContext,
+            $insights,
             $message
         );
 
-        // Gemini API logic here
+        $cachedResponse = $this->getCachedResponse(
+            $user,
+            $message,
+            $prompt
+        );
 
-        return $prompt;
+        if ($cachedResponse) {
+            return $cachedResponse;
+        }
+
+        try {
+
+            $response = $this->askGemini($prompt);
+
+            $this->cacheResponse(
+                $user,
+                $message,
+                $prompt,
+                $response
+            );
+
+            return $response;
+        } catch (\Throwable $e) {
+
+            return $this->generateFallbackResponse(
+                $financialContext,
+                $insights
+            );
+        }
     }
 
-    private function buildPrompt(array $context, string $message): string
+    private function buildFinancialContext(User $user): array
     {
-        $identity = <<<PROMPT
+        return $this->financeService->aiContext($user);
+    }
+
+    private function detectInsights(array $financialContext): array
+    {
+        return [];
+    }
+
+    private function buildPrompt(array $financialContext, array $insights, string $message): string
+    {
+        $identitySection = <<<PROMPT
 
             You are FinMate AI, an intelligent personal finance coach.
 
@@ -48,59 +87,71 @@ class AIChatService
 
         PROMPT;
 
-        $financialContext = <<<PROMPT
+        $financialContextSection = <<<PROMPT
             Financial Summary
 
-            Total Income: ₹{$context['summary']['total_income']}
-            Total Expense: ₹{$context['summary']['total_expense']}
-            Current Balance: ₹{$context['summary']['current_balance']}
+            Total Income: ₹{$financialContext['summary']['total_income']}
+            Total Expense: ₹{$financialContext['summary']['total_expense']}
+            Current Balance: ₹{$financialContext['summary']['current_balance']}
 
             Monthly Summary
 
-            Income: ₹{$context['monthly']['income']}
-            Expense: ₹{$context['monthly']['expense']}
-            Savings: ₹{$context['monthly']['savings']}
-            Deficit: ₹{$context['monthly']['deficit']}
+            Income: ₹{$financialContext['monthly']['income']}
+            Expense: ₹{$financialContext['monthly']['expense']}
+            Savings: ₹{$financialContext['monthly']['savings']}
+            Deficit: ₹{$financialContext['monthly']['deficit']}
             
         PROMPT;
 
         // Transactions
         $recentTransactions = "";
 
-        foreach ($context['recent_transactions'] as $transaction) {
+        foreach ($financialContext['recent_transactions'] as $transaction) {
 
             $recentTransactions .=
                 "- {$transaction['title']} ({$transaction['category']['name']}) : ₹{$transaction['amount']}\n";
         }
 
-        $financialContext .= "\n\nRecent Transactions:\n";
-        $financialContext .= $recentTransactions;
+        if (empty($recentTransactions)) {
+            $recentTransactions = "- No transactions recorded yet.\n";
+        }
+
+        $financialContextSection .= "\n\nRecent Transactions:\n";
+        $financialContextSection .= $recentTransactions;
 
         // Expense by category
         $expenseCategories = "";
 
-        foreach ($context['expense_by_category'] as $category) {
+        foreach ($financialContext['expense_by_category'] as $category) {
 
             $expenseCategories .=
                 "- {$category['category']}: ₹{$category['amount']}\n";
         }
 
-        $financialContext .= "\nExpense Categories:\n";
-        $financialContext .= $expenseCategories;
+        if (empty($expenseCategories)) {
+            $expenseCategories = "- No expense category recorded yet.\n";
+        }
+
+        $financialContextSection .= "\nExpense Categories:\n";
+        $financialContextSection .= $expenseCategories;
 
         // Income by category
         $incomeCategories = "";
 
-        foreach ($context['income_by_category'] as $category) {
+        foreach ($financialContext['income_by_category'] as $category) {
 
             $incomeCategories .=
                 "- {$category['category']}: ₹{$category['amount']}\n";
         }
 
-        $financialContext .= "\nIncome Categories:\n";
-        $financialContext .= $incomeCategories;
+        if (empty($incomeCategories)) {
+            $incomeCategories = "- No income category recorded yet.\n";
+        }
 
-        $instructions = <<<PROMPT
+        $financialContextSection .= "\nIncome Categories:\n";
+        $financialContextSection .= $incomeCategories;
+
+        $instructionsSection = <<<PROMPT
             User Question:
 
             {$message}
@@ -122,12 +173,32 @@ class AIChatService
         PROMPT;
 
         return <<<PROMPT
-            {$identity}
+            {$identitySection}
 
-            {$financialContext}
+            {$financialContextSection}
 
-            {$instructions}
+            {$instructionsSection}
             
         PROMPT;
+    }
+
+    private function getCachedResponse(User $user, string $message, string $prompt): ?string
+    {
+        return null;
+    }
+
+    private function cacheResponse(User $user, string $message, string $prompt, string $response): void
+    {
+        //
+    }
+
+    private function askGemini(string $prompt): string
+    {
+        return "Gemini response";
+    }
+
+    private function generateFallbackResponse(array $financialContext, array $insights): string
+    {
+        return "Fallback response";
     }
 }
