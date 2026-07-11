@@ -22,6 +22,7 @@ class AIChatService
         $insights = $this->detectInsights($financialContext);
 
         $prompt = $this->buildPrompt(
+            $user,
             $financialContext,
             $insights,
             $message
@@ -67,20 +68,57 @@ class AIChatService
     {
         $insights = [];
 
-        // Rule 1
+        // Rule 1 - Check deficit
+        if ($financialContext['monthly']['deficit'] > 0) {
 
-        // Rule 2
+            $insights[] = [
+                'type' => 'warning',
+                'message' => 'The user is currently operating with a monthly deficit.',
+            ];
+        }
 
-        // Rule 3
+        // Rule 2 - Check savings
+        if ($financialContext['monthly']['savings'] > 0) {
 
-        // Rule 4
+            $insights[] = [
+                'type' => 'positive',
+                'message' => 'The user has successfully saved money this month.',
+            ];
+        }
 
-        // Rule 5
+        // Rule 3 - Check if no income
+        if ($financialContext['summary']['total_income'] == 0) {
+
+            $insights[] = [
+                'type' => 'info',
+                'message' => 'No income has been recorded yet.',
+            ];
+        }
+
+        // Rule 4 - Check recent transactions
+        if (count($financialContext['recent_transactions']) === 0) {
+
+            $insights[] = [
+                'type' => 'info',
+                'message' => 'No transactions have been recorded yet.',
+            ];
+        }
+
+        // Rule 5 - Check heighest expense category
+        if (!empty($financialContext['expense_by_category'])) {
+
+            $highestCategory = $financialContext['expense_by_category'][0];
+
+            $insights[] = [
+                'type' => 'warning',
+                'message' => "{$highestCategory['category']} is currently the highest spending category.",
+            ];
+        }
 
         return $insights;
     }
 
-    private function buildPrompt(array $financialContext, array $insights, string $message): string
+    private function buildPrompt(User $user, array $financialContext, array $insights, string $message): string
     {
         $identitySection = <<<PROMPT
 
@@ -97,6 +135,22 @@ class AIChatService
             - Be supportive and motivating.
             - Explain financial concepts in simple language.
 
+        PROMPT;
+
+        $currentDate = now()->format('d F Y');
+        $currentTime = now()->format('h:i A');
+        $currentTimezone = config('app.timezone');
+
+        $userContextSection = <<<PROMPT
+            User Information
+
+            Name: {$user->name}
+
+            Current Date: {$currentDate}
+
+            Current Time: {$currentTime}
+
+            Current TimeZone: {$currentTimezone}
         PROMPT;
 
         $financialContextSection = <<<PROMPT
@@ -163,6 +217,22 @@ class AIChatService
         $financialContextSection .= "\nIncome Categories:\n";
         $financialContextSection .= $incomeCategories;
 
+
+        $insightsSection = "\nDetected Financial Insights:\n";
+
+        foreach ($insights as $insight) {
+
+            $insightsSection .=
+                "- {$insight['message']}\n";
+        }
+
+        if (empty($insights)) {
+
+            $insightsSection .=
+                "- No significant financial insights detected.\n";
+        }
+
+
         $instructionsSection = <<<PROMPT
             User Question:
 
@@ -187,7 +257,11 @@ class AIChatService
         return <<<PROMPT
             {$identitySection}
 
+            {$userContextSection}
+
             {$financialContextSection}
+
+            {$insightsSection}
 
             {$instructionsSection}
             
