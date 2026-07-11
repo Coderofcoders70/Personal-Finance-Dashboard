@@ -65,7 +65,19 @@ class AIChatService
 
     private function detectInsights(array $financialContext): array
     {
-        return [];
+        $insights = [];
+
+        // Rule 1
+
+        // Rule 2
+
+        // Rule 3
+
+        // Rule 4
+
+        // Rule 5
+
+        return $insights;
     }
 
     private function buildPrompt(array $financialContext, array $insights, string $message): string
