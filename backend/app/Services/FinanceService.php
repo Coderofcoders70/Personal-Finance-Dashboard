@@ -6,26 +6,37 @@ use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class FinanceService
 {
     public function dashboard(User $user): array
     {
-        return [
-            'success' => true,
+        $cacheKey = "user:dashboard:{$user->id}";
 
-            'summary' => $this->calculateSummary($user),
+        return Cache::remember(
+            $cacheKey,
+            now()->addMinutes(10),
+            function () use ($user) {
 
-            'monthly' => $this->calculateMonthlySummary($user),
+                return [
+                    'success' => true,
 
-            'recent_transactions' => TransactionResource::collection(
-                $this->recentTransactions($user)
-            ),
+                    'summary' => $this->calculateSummary($user),
 
-            'expense_by_category' => $this->expenseByCategory($user),
+                    'monthly' => $this->calculateMonthlySummary($user),
 
-            'income_by_category' => $this->incomeByCategory($user),
-        ];
+                    'recent_transactions' => TransactionResource::collection(
+                        $this->recentTransactions($user)
+                    ),
+
+                    'expense_by_category' => $this->expenseByCategory($user),
+
+                    'income_by_category' => $this->incomeByCategory($user),
+                ];
+            }
+
+        );
     }
 
     public function monthlyReport(User $user, int $month, int $year): array
@@ -222,7 +233,7 @@ class FinanceService
     public function aiContext(User $user): array
     {
         return [
-            
+
             'summary' => $this->calculateSummary($user),
 
             'monthly' => $this->calculateMonthlySummary($user),
