@@ -2,17 +2,17 @@
 
 namespace App\Services;
 
-use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use App\Models\User;
+use App\Support\CacheKeys;
 use Illuminate\Support\Facades\Cache;
 
 class FinanceService
 {
     public function dashboard(User $user): array
     {
-        $cacheKey = "user:dashboard:{$user->id}";
+        $cacheKey = CacheKeys::dashboard($user);
 
         return Cache::remember(
             $cacheKey,
@@ -26,9 +26,7 @@ class FinanceService
 
                     'monthly' => $this->calculateMonthlySummary($user),
 
-                    'recent_transactions' => TransactionResource::collection(
-                        $this->recentTransactions($user)
-                    ),
+                    'recent_transactions' => $this->recentTransactions($user),
 
                     'expense_by_category' => $this->expenseByCategory($user),
 
@@ -59,7 +57,7 @@ class FinanceService
             'expense' => $expense,
             'savings' => max(0, $income - $expense),
             'deficit' => max(0, $expense - $income),
-            'transactions' => TransactionResource::collection($transactions),
+            'transactions' => $transactions,
         ];
     }
 
@@ -84,7 +82,7 @@ class FinanceService
             'expense' => $expense,
             'savings' => max(0, $income - $expense),
             'deficit' => max(0, $expense - $income),
-            'transactions' => TransactionResource::collection($transactions),
+            'transactions' => $transactions,
         ];
     }
 
@@ -238,9 +236,7 @@ class FinanceService
 
             'monthly' => $this->calculateMonthlySummary($user),
 
-            'recent_transactions' => TransactionResource::collection(
-                $this->recentTransactions($user)
-            ),
+            'recent_transactions' => $this->recentTransactions($user),
 
             'expense_by_category' => $this->expenseByCategory($user),
 

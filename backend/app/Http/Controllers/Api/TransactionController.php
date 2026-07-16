@@ -8,6 +8,7 @@ use App\Http\Resources\TransactionResource;
 use App\Services\NotificationService;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\CacheInvalidationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,10 +19,14 @@ class TransactionController extends Controller
     use AuthorizesRequests;
 
     private NotificationService $notificationService;
+    private CacheInvalidationService $cacheInvalidationService;
 
-    public function __construct(NotificationService $notificationService)
-    {
+    public function __construct(
+        NotificationService $notificationService,
+        CacheInvalidationService $cacheInvalidationService
+    ) {
         $this->notificationService = $notificationService;
+        $this->cacheInvalidationService = $cacheInvalidationService;
     }
 
     public function index(Request $request)
@@ -81,6 +86,9 @@ class TransactionController extends Controller
             return $transaction;
         });
 
+        $this->cacheInvalidationService
+            ->clearFinance($request->user());
+
         return response()->json([
             'success' => true,
             'message' => 'Transaction created successfully.',
@@ -130,6 +138,9 @@ class TransactionController extends Controller
             );
         });
 
+        $this->cacheInvalidationService
+            ->clearFinance($request->user());
+
         return response()->json([
             'success' => true,
             'message' => 'Transaction updated successfully.',
@@ -146,7 +157,7 @@ class TransactionController extends Controller
         $amount = $transaction->amount;
 
         DB::transaction(function () use ($request, $transaction, $title, $type, $amount) {
-            
+
             $transaction->delete();
 
             $action = $type === 'income'
@@ -165,6 +176,9 @@ class TransactionController extends Controller
                 'warning'
             );
         });
+
+        $this->cacheInvalidationService
+            ->clearFinance($request->user());
 
         return response()->json([
             'success' => true,
