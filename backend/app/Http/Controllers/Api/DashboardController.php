@@ -23,6 +23,7 @@ class DashboardController extends Controller
         $dashboard['recent_transactions'] = TransactionResource::collection(
             $dashboard['recent_transactions']
         );
+        
         return response()->json($dashboard);
     }
 }

@@ -252,17 +252,23 @@ class FinanceService
 
     public function aiContext(User $user): array
     {
-        return [
+        return Cache::remember(
+            CacheKeys::aiContext($user),
+            self::AI_CONTEXT_CACHE_TTL_SECONDS,
+            function () use ($user) {
+                return [
 
-            'summary' => $this->calculateSummary($user),
+                    'summary' => $this->calculateSummary($user),
 
-            'monthly' => $this->calculateMonthlySummary($user),
+                    'monthly' => $this->calculateMonthlySummary($user),
 
-            'recent_transactions' => $this->recentTransactions($user),
+                    'recent_transactions' => $this->recentTransactions($user),
 
-            'expense_by_category' => $this->expenseByCategory($user),
+                    'expense_by_category' => $this->expenseByCategory($user),
 
-            'income_by_category' => $this->incomeByCategory($user),
-        ];
+                    'income_by_category' => $this->incomeByCategory($user),
+                ];
+            }
+        );
     }
 }
