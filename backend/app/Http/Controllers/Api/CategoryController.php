@@ -7,9 +7,10 @@ use App\Http\Requests\CategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Services\NotificationService;
 use App\Models\Category;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\CacheInvalidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 
 class CategoryController extends Controller
@@ -17,10 +18,14 @@ class CategoryController extends Controller
     use AuthorizesRequests;
 
     private NotificationService $notificationService;
+    private CacheInvalidationService $cacheInvalidationService;
 
-    public function __construct(NotificationService $notificationService)
-    {
+    public function __construct(
+        NotificationService $notificationService,
+        CacheInvalidationService $cacheInvalidationService
+    ) {
         $this->notificationService = $notificationService;
+        $this->cacheInvalidationService = $cacheInvalidationService;
     }
 
     public function index(Request $request)
@@ -59,6 +64,9 @@ class CategoryController extends Controller
             return $category;
         });
 
+        $this->cacheInvalidationService
+            ->clearFinance($request->user());
+
         return response()->json([
             'success' => true,
             'message' => 'Category created successfully.',
@@ -88,6 +96,9 @@ class CategoryController extends Controller
             );
         });
 
+        $this->cacheInvalidationService
+            ->clearFinance($request->user());
+
         return response()->json([
             'success' => true,
             'message' => 'Category updated successfully.',
@@ -100,9 +111,9 @@ class CategoryController extends Controller
         $this->authorize('delete', $category);
 
         $categoryName = $category->name;
-        
+
         DB::transaction(function () use ($request, $category, $categoryName) {
-            
+
             $category->delete();
 
             $this->notificationService->create(
@@ -113,6 +124,9 @@ class CategoryController extends Controller
                 'warning'
             );
         });
+
+        $this->cacheInvalidationService
+            ->clearFinance($request->user());
 
         return response()->json([
             'success' => true,

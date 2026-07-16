@@ -10,13 +10,17 @@ use Illuminate\Support\Facades\Cache;
 
 class FinanceService
 {
+    private const DASHBOARD_CACHE_TTL_SECONDS = 600;
+    private const REPORT_CACHE_TTL_SECONDS = 600;
+    private const AI_CONTEXT_CACHE_TTL_SECONDS = 300;
+
     public function dashboard(User $user): array
     {
         $cacheKey = CacheKeys::dashboard($user);
 
         return Cache::remember(
             $cacheKey,
-            now()->addMinutes(10),
+            self::DASHBOARD_CACHE_TTL_SECONDS,
             function () use ($user) {
 
                 return [
@@ -39,70 +43,88 @@ class FinanceService
 
     public function monthlyReport(User $user, int $month, int $year): array
     {
-        $transactions = Transaction::with('category')
-            ->where('user_id', $user->id)
-            ->whereMonth('transaction_date', $month)
-            ->whereYear('transaction_date', $year)
-            ->latest()
-            ->get();
+        return Cache::remember(
+            CacheKeys::monthlyReport($user, $month, $year),
+            self::REPORT_CACHE_TTL_SECONDS,
+            function () use ($user, $month, $year) {
+                $transactions = Transaction::with('category')
+                    ->where('user_id', $user->id)
+                    ->whereMonth('transaction_date', $month)
+                    ->whereYear('transaction_date', $year)
+                    ->latest()
+                    ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+                $income = $transactions->where('type', 'income')->sum('amount');
+                $expense = $transactions->where('type', 'expense')->sum('amount');
 
-        return [
-            'success' => true,
-            'month' => Carbon::create()->month($month)->format('F'),
-            'year' => $year,
-            'income' => $income,
-            'expense' => $expense,
-            'savings' => max(0, $income - $expense),
-            'deficit' => max(0, $expense - $income),
-            'transactions' => $transactions,
-        ];
+                return [
+                    'success' => true,
+                    'month' => Carbon::create()->month($month)->format('F'),
+                    'year' => $year,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'savings' => max(0, $income - $expense),
+                    'deficit' => max(0, $expense - $income),
+                    'transactions' => $transactions,
+                ];
+            }
+        );
     }
 
     public function weeklyReport(User $user): array
     {
-        $start = Carbon::now()->startOfWeek();
-        $end = Carbon::now()->endOfWeek();
+        return Cache::remember(
+            CacheKeys::weeklyReport($user),
+            self::REPORT_CACHE_TTL_SECONDS,
+            function () use ($user) {
+                $start = Carbon::now()->startOfWeek();
+                $end = Carbon::now()->endOfWeek();
 
-        $transactions = Transaction::with('category')
-            ->where('user_id', $user->id)
-            ->whereBetween('transaction_date', [$start, $end])
-            ->latest()
-            ->get();
+                $transactions = Transaction::with('category')
+                    ->where('user_id', $user->id)
+                    ->whereBetween('transaction_date', [$start, $end])
+                    ->latest()
+                    ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+                $income = $transactions->where('type', 'income')->sum('amount');
+                $expense = $transactions->where('type', 'expense')->sum('amount');
 
-        return [
-            'success' => true,
-            'week' => 'Current Week',
-            'income' => $income,
-            'expense' => $expense,
-            'savings' => max(0, $income - $expense),
-            'deficit' => max(0, $expense - $income),
-            'transactions' => $transactions,
-        ];
+                return [
+                    'success' => true,
+                    'week' => 'Current Week',
+                    'income' => $income,
+                    'expense' => $expense,
+                    'savings' => max(0, $income - $expense),
+                    'deficit' => max(0, $expense - $income),
+                    'transactions' => $transactions,
+                ];
+            }
+        );
     }
 
     public function yearlyReport(User $user, int $year): array
     {
-        $transactions = Transaction::where('user_id', $user->id)
-            ->whereYear('transaction_date', $year)
-            ->get();
+        return Cache::remember(
+            CacheKeys::yearlyReport($user, $year),
+            self::REPORT_CACHE_TTL_SECONDS,
+            function () use ($user, $year) {
+                $transactions = Transaction::where('user_id', $user->id)
+                    ->whereYear('transaction_date', $year)
+                    ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+                $income = $transactions->where('type', 'income')->sum('amount');
+                $expense = $transactions->where('type', 'expense')->sum('amount');
 
-        return [
-            'success' => true,
-            'year' => $year,
-            'income' => $income,
-            'expense' => $expense,
-            'savings' => max(0, $income - $expense),
-            'deficit' => max(0, $expense - $income),
-        ];
+                return [
+                    'success' => true,
+                    'year' => $year,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'savings' => max(0, $income - $expense),
+                    'deficit' => max(0, $expense - $income),
+                ];
+            }
+        );
     }
 
     public function categoryReport(User $user, string $type): array

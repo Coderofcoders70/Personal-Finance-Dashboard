@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\FinanceService;
 use Illuminate\Http\Request;
+use App\Http\Resources\TransactionResource;
 
 class ReportController extends Controller
 {
@@ -22,22 +23,30 @@ class ReportController extends Controller
             'year' => 'nullable|integer|min:2000|max:2100',
         ]);
 
-        return response()->json(
-            $this->financeService->monthlyReport(
-                $request->user(),
-                (int) $request->input('month', now()->month),
-                (int) $request->input('year', now()->year)
-            )
+        $report = $this->financeService->monthlyReport(
+            $request->user(),
+            (int) $request->input('month', now()->month),
+            (int) $request->input('year', now()->year)
         );
+
+        $report['transactions'] = TransactionResource::collection(
+            $report['transactions']
+        );
+
+        return response()->json($report);
     }
 
     public function weekly(Request $request)
     {
-        return response()->json(
-            $this->financeService->weeklyReport(
-                $request->user()
-            )
+        $report = $this->financeService->weeklyReport(
+            $request->user()
         );
+
+        $report['transactions'] = TransactionResource::collection(
+            $report['transactions']
+        );
+
+        return response()->json();
     }
 
     public function yearly(Request $request)

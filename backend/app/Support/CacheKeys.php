@@ -13,7 +13,7 @@ class CacheKeys
 
     public static function monthlyReport(User $user, int $month, int $year): string
     {
-        return "report:monthly:user:{$user->id}:{$year}:{$month}";
+        return "report:monthly:user:{$user->id}:{$month}:{$year}";
     }
 
     public static function weeklyReport(User $user): string
