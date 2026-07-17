@@ -6,14 +6,29 @@ use App\Models\User;
 
 class CacheKeys
 {
-    public static function dashboard(User $user): string
+    public static function summary(User $user): string
     {
-        return "dashboard:user:{$user->id}";
+        return "summary:user:{$user->id}";
+    }
+
+    public static function monthlySummary(User $user): string
+    {
+        return "monthly-summary:user:{$user->id}";
+    }
+
+    public static function expenseCategory(User $user): string
+    {
+        return "expense-category:user:{$user->id}";
+    }
+
+    public static function incomeCategory(User $user): string
+    {
+        return "income-category:user:{$user->id}";
     }
 
     public static function monthlyReport(User $user, int $month, int $year): string
     {
-        return "report:monthly:user:{$user->id}:{$month}:{$year}";
+        return "report:monthly:user:{$user->id}:{$year}:{$month}";
     }
 
     public static function weeklyReport(User $user): string

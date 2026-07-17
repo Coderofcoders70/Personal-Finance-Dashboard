@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\Cache;
 
 class CacheInvalidationService
 {
-    public function clearDashboard(User $user): void
+    public function clearAnalytics(User $user): void
     {
-        Cache::forget(
-            CacheKeys::dashboard($user)
-        );
+        Cache::forget(CacheKeys::summary($user));
+        Cache::forget(CacheKeys::monthlySummary($user));
+        Cache::forget(CacheKeys::expenseCategory($user));
+        Cache::forget(CacheKeys::incomeCategory($user));
     }
 
     public function clearReports(User $user): void
@@ -46,7 +47,7 @@ class CacheInvalidationService
 
     public function clearFinance(User $user): void
     {
-        $this->clearDashboard($user);
+        $this->clearAnalytics($user);
 
         $this->clearReports($user);
 

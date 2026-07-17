@@ -5,126 +5,100 @@ namespace App\Services;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use App\Models\User;
-use App\Support\CacheKeys;
-use Illuminate\Support\Facades\Cache;
+use App\Services\AnalyticsService;
 
 class FinanceService
 {
-    private const DASHBOARD_CACHE_TTL_SECONDS = 600;
-    private const REPORT_CACHE_TTL_SECONDS = 600;
-    private const AI_CONTEXT_CACHE_TTL_SECONDS = 300;
+    private AnalyticsService $analyticsService;
+
+    public function __construct(AnalyticsService $analyticsService)
+    {
+        $this->analyticsService = $analyticsService;
+    }
 
     public function dashboard(User $user): array
     {
-        $cacheKey = CacheKeys::dashboard($user);
+        return [
+            'success' => true,
 
-        return Cache::remember(
-            $cacheKey,
-            self::DASHBOARD_CACHE_TTL_SECONDS,
-            function () use ($user) {
+            'summary' => $this->analyticsService->summary($user),
 
-                return [
-                    'success' => true,
+            'monthly' => $this->analyticsService->monthlySummary($user),
 
-                    'summary' => $this->calculateSummary($user),
+            'recent_transactions' => $this->recentTransactions($user),
 
-                    'monthly' => $this->calculateMonthlySummary($user),
+            'expense_by_category' => $this->analyticsService->expenseByCategory($user),
 
-                    'recent_transactions' => $this->recentTransactions($user),
-
-                    'expense_by_category' => $this->expenseByCategory($user),
-
-                    'income_by_category' => $this->incomeByCategory($user),
-                ];
-            }
-
-        );
+            'income_by_category' => $this->analyticsService->incomeByCategory($user),
+        ];
     }
 
     public function monthlyReport(User $user, int $month, int $year): array
     {
-        return Cache::remember(
-            CacheKeys::monthlyReport($user, $month, $year),
-            self::REPORT_CACHE_TTL_SECONDS,
-            function () use ($user, $month, $year) {
-                $transactions = Transaction::with('category')
-                    ->where('user_id', $user->id)
-                    ->whereMonth('transaction_date', $month)
-                    ->whereYear('transaction_date', $year)
-                    ->latest()
-                    ->get();
+        $transactions = Transaction::with('category')
+            ->where('user_id', $user->id)
+            ->whereMonth('transaction_date', $month)
+            ->whereYear('transaction_date', $year)
+            ->latest()
+            ->get();
 
-                $income = $transactions->where('type', 'income')->sum('amount');
-                $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = $transactions->where('type', 'income')->sum('amount');
+        $expense = $transactions->where('type', 'expense')->sum('amount');
 
-                return [
-                    'success' => true,
-                    'month' => Carbon::create()->month($month)->format('F'),
-                    'year' => $year,
-                    'income' => $income,
-                    'expense' => $expense,
-                    'savings' => max(0, $income - $expense),
-                    'deficit' => max(0, $expense - $income),
-                    'transactions' => $transactions,
-                ];
-            }
-        );
+        return [
+            'success' => true,
+            'month' => Carbon::create()->month($month)->format('F'),
+            'year' => $year,
+            'income' => $income,
+            'expense' => $expense,
+            'savings' => max(0, $income - $expense),
+            'deficit' => max(0, $expense - $income),
+            'transactions' => $transactions,
+        ];
     }
 
     public function weeklyReport(User $user): array
     {
-        return Cache::remember(
-            CacheKeys::weeklyReport($user),
-            self::REPORT_CACHE_TTL_SECONDS,
-            function () use ($user) {
-                $start = Carbon::now()->startOfWeek();
-                $end = Carbon::now()->endOfWeek();
+        $start = Carbon::now()->startOfWeek();
+        $end = Carbon::now()->endOfWeek();
 
-                $transactions = Transaction::with('category')
-                    ->where('user_id', $user->id)
-                    ->whereBetween('transaction_date', [$start, $end])
-                    ->latest()
-                    ->get();
+        $transactions = Transaction::with('category')
+            ->where('user_id', $user->id)
+            ->whereBetween('transaction_date', [$start, $end])
+            ->latest()
+            ->get();
 
-                $income = $transactions->where('type', 'income')->sum('amount');
-                $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = $transactions->where('type', 'income')->sum('amount');
+        $expense = $transactions->where('type', 'expense')->sum('amount');
 
-                return [
-                    'success' => true,
-                    'week' => 'Current Week',
-                    'income' => $income,
-                    'expense' => $expense,
-                    'savings' => max(0, $income - $expense),
-                    'deficit' => max(0, $expense - $income),
-                    'transactions' => $transactions,
-                ];
-            }
-        );
+        return [
+            'success' => true,
+            'week' => 'Current Week',
+            'income' => $income,
+            'expense' => $expense,
+            'savings' => max(0, $income - $expense),
+            'deficit' => max(0, $expense - $income),
+            'transactions' => $transactions,
+        ];
     }
 
     public function yearlyReport(User $user, int $year): array
     {
-        return Cache::remember(
-            CacheKeys::yearlyReport($user, $year),
-            self::REPORT_CACHE_TTL_SECONDS,
-            function () use ($user, $year) {
-                $transactions = Transaction::where('user_id', $user->id)
-                    ->whereYear('transaction_date', $year)
-                    ->get();
+        $transactions = Transaction::where('user_id', $user->id)
+            ->whereYear('transaction_date', $year)
+            ->get();
 
-                $income = $transactions->where('type', 'income')->sum('amount');
-                $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = $transactions->where('type', 'income')->sum('amount');
+        $expense = $transactions->where('type', 'expense')->sum('amount');
 
-                return [
-                    'success' => true,
-                    'year' => $year,
-                    'income' => $income,
-                    'expense' => $expense,
-                    'savings' => max(0, $income - $expense),
-                    'deficit' => max(0, $expense - $income),
-                ];
-            }
-        );
+        return [
+            'success' => true,
+            'year' => $year,
+            'income' => $income,
+            'expense' => $expense,
+            'savings' => max(0, $income - $expense),
+            'deficit' => max(0, $expense - $income),
+        ];
     }
 
     public function categoryReport(User $user, string $type): array
@@ -157,54 +131,6 @@ class FinanceService
         ];
     }
 
-    private function calculateSummary(User $user): array
-    {
-        $totalIncome = Transaction::where('user_id', $user->id)
-            ->where('type', 'income')
-            ->sum('amount');
-
-        $totalExpense = Transaction::where('user_id', $user->id)
-            ->where('type', 'expense')
-            ->sum('amount');
-
-        return [
-            'total_income' => $totalIncome,
-            'total_expense' => $totalExpense,
-            'current_balance' => $totalIncome - $totalExpense,
-            'total_transactions' => Transaction::where('user_id', $user->id)->count(),
-        ];
-    }
-
-    private function calculateMonthlySummary(User $user): array
-    {
-        $monthlyIncome = Transaction::where('user_id', $user->id)
-            ->where('type', 'income')
-            ->whereMonth('transaction_date', Carbon::now()->month)
-            ->whereYear('transaction_date', Carbon::now()->year)
-            ->sum('amount');
-
-        $monthlyExpense = Transaction::where('user_id', $user->id)
-            ->where('type', 'expense')
-            ->whereMonth('transaction_date', Carbon::now()->month)
-            ->whereYear('transaction_date', Carbon::now()->year)
-            ->sum('amount');
-
-        if ($monthlyIncome >= $monthlyExpense) {
-            $monthlySavings = $monthlyIncome - $monthlyExpense;
-            $monthlyDeficit = 0;
-        } else {
-            $monthlySavings = 0;
-            $monthlyDeficit = $monthlyExpense - $monthlyIncome;
-        }
-
-        return [
-            'income' => $monthlyIncome,
-            'expense' => $monthlyExpense,
-            'savings' => $monthlySavings,
-            'deficit' => $monthlyDeficit,
-        ];
-    }
-
     private function recentTransactions(User $user)
     {
         return Transaction::with('category')
@@ -214,61 +140,19 @@ class FinanceService
             ->get();
     }
 
-    private function expenseByCategory(User $user)
-    {
-        return Transaction::selectRaw('category_id, SUM(amount) as total')
-            ->with('category')
-            ->where('user_id', $user->id)
-            ->where('type', 'expense')
-            ->groupBy('category_id')
-            ->get()
-            ->map(function ($transaction) {
-                return [
-                    'category' => $transaction->category->name,
-                    'icon' => $transaction->category->icon,
-                    'color' => $transaction->category->color,
-                    'amount' => (float) $transaction->total,
-                ];
-            });
-    }
-
-    private function incomeByCategory(User $user)
-    {
-        return Transaction::selectRaw('category_id, SUM(amount) as total')
-            ->with('category')
-            ->where('user_id', $user->id)
-            ->where('type', 'income')
-            ->groupBy('category_id')
-            ->get()
-            ->map(function ($transaction) {
-                return [
-                    'category' => $transaction->category->name,
-                    'icon' => $transaction->category->icon,
-                    'color' => $transaction->category->color,
-                    'amount' => (float) $transaction->total,
-                ];
-            });
-    }
-
     public function aiContext(User $user): array
     {
-        return Cache::remember(
-            CacheKeys::aiContext($user),
-            self::AI_CONTEXT_CACHE_TTL_SECONDS,
-            function () use ($user) {
-                return [
+        return [
 
-                    'summary' => $this->calculateSummary($user),
+            'summary' => $this->analyticsService->summary($user),
 
-                    'monthly' => $this->calculateMonthlySummary($user),
+            'monthly' => $this->analyticsService->monthlySummary($user),
 
-                    'recent_transactions' => $this->recentTransactions($user),
+            'recent_transactions' => $this->recentTransactions($user),
 
-                    'expense_by_category' => $this->expenseByCategory($user),
+            'expense_by_category' => $this->analyticsService->expenseByCategory($user),
 
-                    'income_by_category' => $this->incomeByCategory($user),
-                ];
-            }
-        );
+            'income_by_category' => $this->analyticsService->incomeByCategory($user),
+        ];
     }
 }
