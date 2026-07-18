@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Ai\LLMProvider;
+use App\Ai\Agents\FinMateAgent;
+use App\AI\Providers\LLMProvider;
 use App\Models\User;
 use App\Services\FinanceService;
 
@@ -55,6 +56,7 @@ class AIChatService
             return $response;
         } catch (\Throwable $e) {
 
+            // throw $e;
             return $this->generateFallbackResponse(
                 $user,
                 $financialContext,
@@ -387,7 +389,8 @@ class AIChatService
 
     private function askGemini(string $prompt): string
     {
-        return $this->llmProvider->generate($prompt);
+        $response = (FinMateAgent::make())->prompt($prompt);
+        return (string) $response;
     }
 
     private function generateFallbackResponse(User $user, array $financialContext, array $insights): string

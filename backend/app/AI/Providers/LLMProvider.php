@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Ai;
+namespace App\AI\Providers;
 
 use App\Ai\Agents\FinMateAgent;
 
