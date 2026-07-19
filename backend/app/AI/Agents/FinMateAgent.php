@@ -2,6 +2,7 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Tools\GetCategoryAnalysisTool;
 use App\Ai\Tools\GetFinancialReportTool;
 use App\Ai\Tools\GetFinancialSummaryTool;
 use App\Ai\Tools\GetTransactionsTool;
@@ -60,6 +61,7 @@ class FinMateAgent implements Agent, Conversational, HasTools
             app(GetFinancialReportTool::class),
             app(GetFinancialSummaryTool::class),
             app(GetTransactionsTool::class),
+            app(GetCategoryAnalysisTool::class),
         ];
     }
 }
