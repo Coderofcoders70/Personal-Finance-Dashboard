@@ -2,8 +2,10 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Tools\GetCategoryAnalysisTool;
+use App\Ai\Tools\GetFinancialReportTool;
 use App\Ai\Tools\GetFinancialSummaryTool;
-use Illuminate\Support\Facades\App;
+use App\Ai\Tools\GetTransactionsTool;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
@@ -56,7 +58,8 @@ class FinMateAgent implements Agent, Conversational, HasTools
     public function tools(): iterable
     {
         return [
-            new app(GetFinancialSummaryTool::class),
+            app(GetFinancialReportTool::class),
+            app(GetFinancialSummaryTool::class),
         ];
     }
 }

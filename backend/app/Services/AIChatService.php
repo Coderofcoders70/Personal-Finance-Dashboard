@@ -6,6 +6,7 @@ use App\Ai\Agents\FinMateAgent;
 use App\AI\Providers\LLMProvider;
 use App\Models\User;
 use App\Services\FinanceService;
+use Illuminate\Support\Facades\Log;
 
 class AIChatService
 {
@@ -389,8 +390,30 @@ class AIChatService
 
     private function askGemini(string $prompt): string
     {
-        $response = (FinMateAgent::make())->prompt($prompt);
-        return (string) $response;
+        try {
+
+            Log::info('Sending prompt to gemini..', [
+                'prompt' => $prompt,
+            ]);
+
+            $response = FinMateAgent::make()->prompt($prompt);
+
+            Log::info('Gemini response received..', [
+                'response' => (string) $response,
+            ]);
+
+            return (string) $response;
+    
+        } catch (\Throwable $e) {
+            Log::error('Gemini failed.', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
     }
 
     private function generateFallbackResponse(User $user, array $financialContext, array $insights): string
