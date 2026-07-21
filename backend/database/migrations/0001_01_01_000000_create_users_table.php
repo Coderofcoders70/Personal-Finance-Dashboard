@@ -17,6 +17,14 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('avatar')->nullable();
+            $table->string('currency', 10)->default('INR');
+            $table->string('timezone')->default('Asia/Kolkata');
+            $table->string('language')->default('en');
+            $table->enum('theme', ['light', 'dark', 'system'])->default('system');
+            $table->boolean('ai_enabled')->default(true);
+            $table->boolean('daily_reminder')->default(false);
+            $table->time('notification_time')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

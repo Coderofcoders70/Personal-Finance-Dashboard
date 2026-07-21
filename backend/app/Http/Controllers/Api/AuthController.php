@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
-use App\Models\Setting;
-use App\Models\Profile;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
 use App\Http\Controllers\Controller;
@@ -34,14 +32,6 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password),
             ]);
 
-            Profile::create([
-                'user_id' => $user->id,
-            ]);
-
-            Setting::create([
-                'user_id' => $user->id,
-            ]);
-
             // throw new \Exception('Testing rollback');
 
             $this->notificationService->create(
@@ -52,8 +42,17 @@ class AuthController extends Controller
                 'success'
             );
 
+            $token = $user->createToken('auth_token')->plainTextToken;
+            
             DB::commit();
             
+            return response()->json([
+                'success' => true,
+                'message' => 'User registered successfully.',
+                'token' => $token,
+                'user' => $user,
+            ], 201);
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -65,15 +64,6 @@ class AuthController extends Controller
                 // 'error' => $e->getMessage()
             ], 500);
         }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User registered successfully.',
-            'token' => $token,
-            'user' => $user,
-        ], 201);
     }
 
     public function login(LoginRequest $request)

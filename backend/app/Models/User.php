@@ -12,14 +12,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 // Other Models:
-use App\Models\Profile;
-use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\Category;
 use App\Models\Notification;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'avatar', 'currency', 'timezone', 'language', 'theme', 'ai_enabled', 'daily_reminder', 'notification_time'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -35,17 +32,11 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+
+            'ai_enabled' => 'boolean',
+            'daily_reminder' => 'boolean',
+            'notification_time' => 'datetime:H:i',
         ];
-    }
-
-    public function profile() 
-    {
-        return $this->hasOne(Profile::class);
-    }
-
-    public function setting()
-    {
-        return $this->hasOne(Setting::class);
     }
 
     public function transactions()
