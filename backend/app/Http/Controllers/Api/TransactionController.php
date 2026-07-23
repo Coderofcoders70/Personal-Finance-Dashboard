@@ -13,7 +13,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-
 class TransactionController extends Controller
 {
     use AuthorizesRequests;
@@ -45,8 +44,15 @@ class TransactionController extends Controller
 
     public function store(TransactionRequest $request)
     {
-        $category = Category::where('id', $request->category_id)
-            ->where('user_id', $request->user()->id)
+        $category = Category::query()
+            ->where('id', $request->category_id)
+            ->where(function ($query) use ($request) {
+                $query->default();
+
+                $query->orWhere(function ($query) use ($request) {
+                    $query->custom($request->user()->id);
+                });
+            })
             ->first();
 
         if (!$category) {
@@ -60,26 +66,17 @@ class TransactionController extends Controller
             $transaction = Transaction::create([
                 'user_id' => $request->user()->id,
                 'category_id' => $request->category_id,
-                'type' => $request->type,
                 'title' => $request->title,
                 'description' => $request->description,
                 'amount' => $request->amount,
                 'transaction_date' => $request->transaction_date,
             ]);
 
-            $action = $transaction->type === 'income'
-                ? 'Income Added'
-                : 'Expense Added';
-
-            $event = $transaction->type === 'income'
-                ? 'income_created'
-                : 'expense_created';
-
             $this->notificationService->create(
                 $request->user(),
-                $event,
-                $action,
-                "{$transaction->title} of ₹{$transaction->amount} added successfully.",
+                'transaction_created',
+                'Transaction Created',
+                "{$transaction->title} of {$transaction->amount} added successfully.",
                 'success'
             );
 
@@ -100,8 +97,15 @@ class TransactionController extends Controller
     {
         $this->authorize('update', $transaction);
 
-        $category = Category::where('id', $request->category_id)
-            ->where('user_id', $request->user()->id)
+        $category = Category::query()
+            ->where('id', $request->category_id)
+            ->where(function ($query) use ($request) {
+                $query->default();
+
+                $query->orWhere(function ($query) use ($request) {
+                    $query->custom($request->user()->id);
+                });
+            })
             ->first();
 
         if (!$category) {
@@ -114,25 +118,16 @@ class TransactionController extends Controller
         DB::transaction(function () use ($request, $transaction) {
             $transaction->update([
                 'category_id' => $request->category_id,
-                'type' => $request->type,
                 'title' => $request->title,
                 'description' => $request->description,
                 'amount' => $request->amount,
                 'transaction_date' => $request->transaction_date,
             ]);
 
-            $action = $transaction->type === 'income'
-                ? 'Income Updated'
-                : 'Expense Updated';
-
-            $event = $transaction->type === 'income'
-                ? 'income_updated'
-                : 'expense_updated';
-
             $this->notificationService->create(
                 $request->user(),
-                $event,
-                $action,
+                'transaction_updated',
+                'Transaction updated',
                 "{$transaction->title} updated successfully.",
                 'info'
             );
@@ -153,26 +148,17 @@ class TransactionController extends Controller
         $this->authorize('delete', $transaction);
 
         $title = $transaction->title;
-        $type = $transaction->type;
         $amount = $transaction->amount;
 
-        DB::transaction(function () use ($request, $transaction, $title, $type, $amount) {
+        DB::transaction(function () use ($request, $transaction, $title, $amount) {
 
             $transaction->delete();
 
-            $action = $type === 'income'
-                ? 'Income Deleted'
-                : 'Expense Deleted';
-
-            $event = $type === 'income'
-                ? 'income_deleted'
-                : 'expense_deleted';
-
             $this->notificationService->create(
                 $request->user(),
-                $event,
-                $action,
-                "{$title} of ₹{$amount} deleted successfully.",
+                'transaction_deleted',
+                'Transaction deleted',
+                "{$title} of {$amount} deleted successfully.",
                 'warning'
             );
         });

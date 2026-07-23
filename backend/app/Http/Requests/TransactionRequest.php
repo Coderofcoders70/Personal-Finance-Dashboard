@@ -24,7 +24,6 @@ class TransactionRequest extends FormRequest
     {
         return [
             'category_id' => [ 'required', 'exists:categories,id' ],
-            'type' => [ 'required', 'in:income,expense' ],
             'title' => ['nullable','string','max:255' ],
             'description' => [ 'nullable', 'string' ],
             'amount' => [ 'required', 'numeric', 'min:0.01' ],
