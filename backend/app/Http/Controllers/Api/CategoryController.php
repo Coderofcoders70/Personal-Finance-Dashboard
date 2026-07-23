@@ -8,10 +8,10 @@ use App\Http\Resources\CategoryResource;
 use App\Services\NotificationService;
 use App\Models\Category;
 use App\Services\CacheInvalidationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-
 
 class CategoryController extends Controller
 {
@@ -30,7 +30,15 @@ class CategoryController extends Controller
 
     public function index(Request $request)
     {
-        $categories = Category::where('user_id', $request->user()->id)
+        $categories = Category::query()
+            ->where(function (Builder $query) use ($request) {
+
+                $query->default();
+                      
+                $query->orWhere(function (Builder $query) use ($request) {
+                    $query->custom($request->user()->id);
+                }); 
+            })
             ->orderBy('name')
             ->get();
 
@@ -50,7 +58,6 @@ class CategoryController extends Controller
                 'type' => $request->type,
                 'icon' => $request->icon,
                 'color' => $request->color,
-                'is_system' => false,
             ]);
 
             $this->notificationService->create(

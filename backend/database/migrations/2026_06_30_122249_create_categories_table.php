@@ -22,7 +22,7 @@ return new class extends Migration
             $table->enum('type', ['income', 'expense']);
             $table->string('icon')->nullable();
             $table->string('color')->nullable();
-            $table->boolean('is_system')->default(false);
+
             $table->timestamps();
         });
     }
