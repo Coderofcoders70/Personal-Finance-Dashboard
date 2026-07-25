@@ -42,8 +42,13 @@ class FinanceService
             ->latest()
             ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = $transactions
+            ->filter(fn($transaction) => $transaction->category->type === 'income')
+            ->sum('amount');
+
+        $expense = $transactions
+            ->filter(fn($transaction) => $transaction->category->type === 'expense')
+            ->sum('amount');
 
         return [
             'success' => true,
@@ -68,8 +73,13 @@ class FinanceService
             ->latest()
             ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = $transactions
+            ->filter(fn ($transaction) => $transaction->category->type === 'income')
+            ->sum('amount');
+
+        $expense = $transactions
+            ->filter(fn ($transaction) => $transaction->category->type === 'expense')
+            ->sum('amount');
 
         return [
             'success' => true,
@@ -84,12 +94,18 @@ class FinanceService
 
     public function yearlyReport(User $user, int $year): array
     {
-        $transactions = Transaction::where('user_id', $user->id)
+        $transactions = Transaction::with('category')
+            ->where('user_id', $user->id)
             ->whereYear('transaction_date', $year)
             ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = $transactions
+            ->filter(fn ($transaction) => $transaction->category->type === 'income')
+            ->sum('amount');
+
+        $expense = $transactions
+            ->filter(fn ($transaction) => $transaction->category->type === 'expense')
+            ->sum('amount');
 
         return [
             'success' => true,
@@ -106,7 +122,9 @@ class FinanceService
         $categories = Transaction::selectRaw('category_id, SUM(amount) as total')
             ->with('category')
             ->where('user_id', $user->id)
-            ->where('type', $type)
+            ->whereHas('category', function ($query) use ($type) {
+                $query->where('type', $type);
+            })
             ->groupBy('category_id')
             ->get();
 

@@ -23,11 +23,15 @@ class AnalyticsService
             function () use ($user) {
 
                 $totalIncome = Transaction::where('user_id', $user->id)
-                    ->where('type', 'income')
+                    ->whereHas('category', function ($query) {
+                        $query->where('type', 'income');
+                    })
                     ->sum('amount');
 
                 $totalExpense = Transaction::where('user_id', $user->id)
-                    ->where('type', 'expense')
+                    ->whereHas('category', function ($query) {
+                        $query->where('type', 'expense');
+                    })
                     ->sum('amount');
 
                 return [
@@ -49,13 +53,17 @@ class AnalyticsService
             function () use ($user) {
 
                 $income = Transaction::where('user_id', $user->id)
-                    ->where('type', 'income')
+                    ->whereHas('category', function ($query) {
+                        $query->where('type', 'income');
+                    })
                     ->whereMonth('transaction_date', now()->month)
                     ->whereYear('transaction_date', now()->year)
                     ->sum('amount');
 
                 $expense = Transaction::where('user_id', $user->id)
-                    ->where('type', 'expense')
+                    ->whereHas('category', function ($query) {
+                        $query->where('type', 'expense');
+                    })
                     ->whereMonth('transaction_date', now()->month)
                     ->whereYear('transaction_date', now()->year)
                     ->sum('amount');
@@ -82,7 +90,9 @@ class AnalyticsService
                     ->selectRaw('category_id, SUM(amount) as amount')
                     ->with('category:id,name,icon,color')
                     ->where('user_id', $user->id)
-                    ->where('type', 'expense')
+                    ->whereHas('category', function ($query) {
+                        $query->where('type', 'expense');
+                    })
                     ->groupBy('category_id')
                     ->get()
                     ->map(function ($transaction) {
@@ -111,7 +121,9 @@ class AnalyticsService
                     ->selectRaw('category_id, SUM(amount) as amount')
                     ->with('category:id,name,icon,color')
                     ->where('user_id', $user->id)
-                    ->where('type', 'income')
+                    ->whereHas('category', function ($query) {
+                        $query->where('type', 'income');
+                    })
                     ->groupBy('category_id')
                     ->get()
                     ->map(function ($transaction) {

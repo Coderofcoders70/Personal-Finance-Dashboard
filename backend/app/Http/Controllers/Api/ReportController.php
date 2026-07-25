@@ -46,7 +46,7 @@ class ReportController extends Controller
             $report['transactions']
         );
 
-        return response()->json();
+        return response()->json($report);
     }
 
     public function yearly(Request $request)
