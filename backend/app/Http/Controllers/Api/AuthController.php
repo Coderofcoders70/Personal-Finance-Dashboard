@@ -2,59 +2,35 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\RegisterRequest;
-use App\Services\NotificationService;
-use Illuminate\Support\Facades\DB;
+use App\Services\AuthService;
 
 class AuthController extends Controller
 {
-    private NotificationService $notificationService;
+    private AuthService $authService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(AuthService $authService)
     {
-        $this->notificationService = $notificationService;
+        $this->authService = $authService;
     }
 
     public function register(RegisterRequest $request)
     {
-        DB::beginTransaction();
-
         try {
 
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-            ]);
-
-            // throw new \Exception('Testing rollback');
-
-            $this->notificationService->create(
-                $user,
-                'user_registered',
-                "Welcome, {$user->name}!",
-                'Welcome to Personal Finance Dashboard. Your account has been created successfully. We are excited to help you build better financial habits.',
-                'success'
-            );
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-            
-            DB::commit();
+            $result = $this->authService->register($request);
             
             return response()->json([
                 'success' => true,
                 'message' => 'User registered successfully.',
-                'token' => $token,
-                'user' => $user,
+                'token' => $result['token'],
+                'user' => $result['user'],
             ], 201);
 
         } catch (\Exception $e) {
-            DB::rollBack();
 
             return response()->json([
 
@@ -68,29 +44,19 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request)
     {
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid credentials.',
-            ], 401);
-        }
-
-        $user->tokens()->delete();
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $result = $this->authService->login($request);
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful.',
-            'token' => $token,
-            'user' => $user,
+            'token' => $result['token'],
+            'user' => $result['user'],
         ]);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $this->authService->logout($request->user());
 
         return response()->json([
             'success' => true,
@@ -102,7 +68,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'user' => $request->user(),
+            'user' => $this->authService->me($request->user()),
         ]);
     }
 }
